@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -11,6 +11,7 @@ import MatchCard from "../components/MatchCard";
 import LoadingSkeleton from "../components/LoadingSkeleton";
 import EmptyState from "../components/EmptyState";
 import { isMatchDayInIndia } from "../utils/date";
+import TodayMatchCard from "../components/TodayMatchCard";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -40,6 +41,14 @@ const Dashboard = () => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  const { todayMatches, upcomingMatches } = useMemo(() => {
+    const today = matches.filter((match) => isMatchDayInIndia(match.match_time));
+    const upcoming = matches.filter(
+      (match) => !isMatchDayInIndia(match.match_time)
+    );
+    return { todayMatches: today, upcomingMatches: upcoming };
+  }, [matches]);
 
   const handlePredict = async (match: Match, team: string) => {
     if (!user) return;
@@ -89,15 +98,37 @@ const Dashboard = () => {
           description="Matches will appear once fixtures are synced."
         />
       ) : (
-        <div className="grid gap-5 md:grid-cols-2">
-          {matches.map((match) => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              prediction={predictions.get(match.id)}
-              onPredict={handlePredict}
-            />
-          ))}
+        <div className="space-y-6">
+          <div className="space-y-4">
+            {todayMatches.length > 0 ? (
+              todayMatches.map((match) => (
+                <TodayMatchCard
+                  key={match.id}
+                  match={match}
+                  prediction={predictions.get(match.id)}
+                  onPredict={handlePredict}
+                />
+              ))
+            ) : (
+              <EmptyState
+                title="No match today"
+                description="Next match appears below."
+              />
+            )}
+          </div>
+
+          {upcomingMatches.length > 0 && (
+            <div className="grid gap-5 md:grid-cols-2">
+              {upcomingMatches.map((match) => (
+                <MatchCard
+                  key={match.id}
+                  match={match}
+                  prediction={predictions.get(match.id)}
+                  onPredict={handlePredict}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

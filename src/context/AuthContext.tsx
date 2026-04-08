@@ -67,6 +67,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    const safetyTimer = setTimeout(() => {
+      if (active) {
+        setLoading(false);
+      }
+    }, 2500);
+
     const init = async () => {
       try {
         const { data } = await supabase.auth.getSession();
@@ -77,6 +84,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // eslint-disable-next-line no-console
         console.error("Auth init failed", error);
       } finally {
+        clearTimeout(safetyTimer);
         setLoading(false);
       }
     };
@@ -99,6 +107,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     return () => {
+      active = false;
+      clearTimeout(safetyTimer);
       listener.subscription.unsubscribe();
     };
   }, [loadProfile]);

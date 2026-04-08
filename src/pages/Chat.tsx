@@ -48,7 +48,7 @@ const Chat = () => {
       }
     };
     loadProfiles();
-  }, [user?.id, selectedId]);
+  }, [user?.id]);
 
   const activeProfile = useMemo(
     () => profiles.find((item) => item.id === selectedId) ?? null,
@@ -84,7 +84,9 @@ const Chat = () => {
             (msg.sender_id === user.id && msg.receiver_id === selectedId) ||
             (msg.sender_id === selectedId && msg.receiver_id === user.id)
           ) {
-            setMessages((prev) => [...prev, msg]);
+            setMessages((prev) =>
+              prev.some((item) => item.id === msg.id) ? prev : [...prev, msg]
+            );
             if (msg.sender_id === selectedId) {
               markMessagesRead(user.id, selectedId).catch(() => null);
             }
@@ -103,9 +105,23 @@ const Chat = () => {
     if (!input.trim()) return;
     const content = input.trim();
     setInput("");
+    const tempId = `temp-${Date.now()}`;
+    const tempMessage: Message = {
+      id: tempId,
+      sender_id: user.id,
+      receiver_id: selectedId,
+      body: content,
+      created_at: new Date().toISOString(),
+      read_at: null
+    };
+    setMessages((prev) => [...prev, tempMessage]);
     try {
-      await sendMessage(user.id, selectedId, content);
+      const saved = (await sendMessage(user.id, selectedId, content)) as Message;
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === tempId ? saved : msg))
+      );
     } catch (error: any) {
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
       toast.error(error.message ?? "Failed to send message");
     }
   };
