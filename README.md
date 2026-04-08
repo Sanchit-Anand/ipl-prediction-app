@@ -57,6 +57,7 @@ CricketData / CricAPI (fixtures + results):
 - `CRICKET_SERIES_NAME` (defaults to Indian Premier League)
 - `PREDICTION_LOCK_MINUTES` (0 = match start time)
 - `CRICKET_MAX_INFO_CALLS` (limit extra match_info calls)
+- `CRICKET_MAX_MATCH_PAGES` (how many pages to scan for matches)
 - `SYNC_SECRET` (optional)
 
 ## Google OAuth Setup

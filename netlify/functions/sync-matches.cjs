@@ -175,14 +175,26 @@ const fetchSeriesMatches = async ({ apiBase, apiKey, seriesId }) => {
   return Array.isArray(list) ? list : [];
 };
 
-const fetchMatchesList = async ({ apiBase, apiKey }) => {
-  const url = buildUrl(apiBase, "matches", {
-    apikey: apiKey,
-    offset: 0
-  });
-  const response = await fetchJson(url);
-  const list = response?.data || response?.matches || response || [];
-  return Array.isArray(list) ? list : [];
+const fetchMatchesList = async ({ apiBase, apiKey, maxPages = 5 }) => {
+  const all = [];
+  let offset = 0;
+  let page = 0;
+
+  while (page < maxPages) {
+    const url = buildUrl(apiBase, "matches", {
+      apikey: apiKey,
+      offset
+    });
+    const response = await fetchJson(url);
+    const list = response?.data || response?.matches || response || [];
+    if (!Array.isArray(list) || list.length === 0) break;
+
+    all.push(...list);
+    offset += list.length;
+    page += 1;
+  }
+
+  return all;
 };
 
 const fetchMatchInfo = async ({ apiBase, apiKey, matchId }) => {
@@ -216,6 +228,7 @@ exports.handler = async (event) => {
   const seriesName = process.env.CRICKET_SERIES_NAME || "Indian Premier League";
   const lockOffset = Number(process.env.PREDICTION_LOCK_MINUTES || "0");
   const maxInfoCalls = Number(process.env.CRICKET_MAX_INFO_CALLS || "25");
+  const maxPages = Number(process.env.CRICKET_MAX_MATCH_PAGES || "5");
 
   if (!supabaseUrl || !supabaseServiceKey) {
     return { statusCode: 500, body: "Missing Supabase service credentials" };
@@ -234,7 +247,7 @@ exports.handler = async (event) => {
     }
 
     if (!matches.length) {
-      const list = await fetchMatchesList({ apiBase, apiKey });
+      const list = await fetchMatchesList({ apiBase, apiKey, maxPages });
       matches = filterIplMatches(list, seriesName, seriesYear);
     }
 
