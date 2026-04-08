@@ -30,53 +30,71 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const loadProfile = useCallback(async (activeUser: User | null) => {
-    if (!activeUser) {
-      setProfile(null);
-      return;
-    }
-    const { data, error } = await supabase
-      .from("users_profile")
-      .select("*")
-      .eq("id", activeUser.id)
-      .single();
-
-    if (error && error.code === "PGRST116") {
-      const { data: insertData } = await supabase
+    try {
+      if (!activeUser) {
+        setProfile(null);
+        return;
+      }
+      const { data, error } = await supabase
         .from("users_profile")
-        .insert({
-          id: activeUser.id,
-          full_name: activeUser.user_metadata?.full_name ?? null,
-          email: activeUser.email ?? null,
-          role: "user"
-        })
-        .select()
+        .select("*")
+        .eq("id", activeUser.id)
         .single();
-      setProfile(insertData ?? null);
-      return;
-    }
 
-    if (!error) {
-      setProfile(data);
+      if (error && error.code === "PGRST116") {
+        const { data: insertData } = await supabase
+          .from("users_profile")
+          .insert({
+            id: activeUser.id,
+            full_name: activeUser.user_metadata?.full_name ?? null,
+            email: activeUser.email ?? null,
+            role: "user"
+          })
+          .select()
+          .single();
+        setProfile(insertData ?? null);
+        return;
+      }
+
+      if (!error) {
+        setProfile(data);
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn("Profile load failed", error);
+      setProfile(null);
     }
   }, []);
 
   useEffect(() => {
     const init = async () => {
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session ?? null);
-      setUser(data.session?.user ?? null);
-      await loadProfile(data.session?.user ?? null);
-      setLoading(false);
+      try {
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session ?? null);
+        setUser(data.session?.user ?? null);
+        await loadProfile(data.session?.user ?? null);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error("Auth init failed", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     init();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, nextSession) => {
-        setSession(nextSession);
-        setUser(nextSession?.user ?? null);
-        await loadProfile(nextSession?.user ?? null);
-        setLoading(false);
+        try {
+          setSession(nextSession);
+          setUser(nextSession?.user ?? null);
+          await loadProfile(nextSession?.user ?? null);
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error("Auth change failed", error);
+        } finally {
+          setLoading(false);
+        }
       }
     );
 
